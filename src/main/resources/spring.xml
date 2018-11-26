@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd">
+
+	<!-- 配置自动扫描的包 -->
+	<context:component-scan base-package="com.yr">
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller" />
+		<context:exclude-filter type="annotation" expression="org.springframework.web.bind.annotation.ControllerAdvice" />
+	</context:component-scan>
+
+	<!-- 引入外部配置文件 -->
+	<context:property-placeholder location="classpath:conn.properties" />
+
+	<!-- 使 AspectJ 的注解起作用 -->
+	<aop:aspectj-autoproxy></aop:aspectj-autoproxy>
+
+	<!-- 配置 C3P0 数据源 -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<property name="user" value="${jdbc.username}"></property>
+		<property name="password" value="${jdbc.password}"></property>
+		<property name="driverClass" value="${jdbc.driverClass}"></property>
+		<property name="jdbcUrl" value="${jdbc.jdbcUrl}"></property>
+	</bean>
+
+	<!-- 配置hibernate 相关属性--> 
+	<!-- SessionFactory接口负责初始化Hibernate,且负责创建Session对象 -->
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate5.LocalSessionFactoryBean">
+        <!-- 注入连接池-->
+        <property name="dataSource" ref="dataSource"></property>
+        <!-- hibernate 的相关属性 -->
+        <property name="hibernateProperties" >
+            <props>
+                <prop key="hibernate.show_sql">true</prop>
+                <prop key="hibernate.dialect">org.hibernate.dialect.MySQL5InnoDBDialect</prop>
+                <prop key="hibernate.format_sql">true</prop>  
+                <!-- 
+				     它包含4个属性: 
+                  create : 会根据你的model类来生成表,但是每次运行都会删除上一次的表,重新生成表,哪怕2次没有任何改变 
+                  create-drop : 根据model类生成表,但是sessionFactory一关闭,表就自动删除 
+                  update : 最常用的属性，也根据model类生成表,即使表结构改变了,表中的行仍然存在,不会删除以前的行 
+                  validate : 只会和数据库中的表进行比较,不会创建新表,但是会插入新值 
+                 -->
+                <prop key="hibernate.hbm2ddl.auto">update</prop>
+            </props>
+        </property>
+        <!-- hibernate 映射文件 -->
+        <property name="mappingResources">
+            <list>
+                <value>com/yr/entity/Department.hbm.xml</value>
+            </list>
+        </property>
+    </bean>
+
+	<!-- 配置支持基于注解是事务配置(声明式事务) -->
+	<tx:annotation-driven transaction-manager="transactionManager" />
+
+	<!-- hibernate 事务管理器 -->
+	<bean id="transactionManager" class="org.springframework.orm.hibernate5.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory"></property> <!-- 注入sessionFactory -->
+		<property name="globalRollbackOnParticipationFailure" value="false" /> <!-- 部分失败整个事务回滚 -->
+	</bean>
+</beans>
